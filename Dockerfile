@@ -4,16 +4,15 @@
 #
 # Upstream: ytdlbot (https://github.com/tgbot-collection/ytdlbot) — Apache 2.0
 # Changes from upstream:
-#   - Explicit --platform=linux/arm64 target label
+#   - Uses pip + requirements.txt (no pdm.lock required in repo)
 #   - aria2 added via apk (arm64 package available in Alpine)
 #   - ffmpeg added via apk (arm64 package available in Alpine)
-#   - ffpb added to pip install (missing from pyproject.toml but imported in helper.py)
-#   - WORKDIR set to /app, src/ mounted there
+#   - ffpb added (missing from upstream pyproject.toml but imported in helper.py)
 
 FROM python:3.12-alpine AS pybuilder
 LABEL stage=builder
-ADD pyproject.toml pdm.lock /build/
 WORKDIR /build
+COPY requirements.txt .
 RUN apk add --no-cache \
         alpine-sdk \
         python3-dev \
@@ -21,36 +20,33 @@ RUN apk add --no-cache \
         linux-headers \
         libffi-dev \
         openssl-dev
-RUN pip install --no-cache-dir pdm
-RUN pdm install --prod --no-editable
+RUN pip install --no-cache-dir --upgrade pip
+RUN pip install --no-cache-dir -r requirements.txt
 
 FROM python:3.12-alpine AS runner
 LABEL maintainer="Raayan"
 WORKDIR /app
 
-# System packages
-# ffmpeg: arm64 available in Alpine (linux/arm64) — VERIFIED via Alpine packages
-# aria2: arm64 available in Alpine — VERIFIED via Alpine packages
-RUN apk update && apk add --no-cache \
+# System packages (all arm64-available in Alpine repos)
+RUN apk add --no-cache \
         ffmpeg \
         aria2 \
         ca-certificates \
-        curl
+        curl \
+        gcc \
+        musl-dev \
+        python3-dev \
+        libffi-dev
 
-# Copy virtualenv from builder
-COPY --from=pybuilder /build/.venv /app/.venv
-
-# Add venv to PATH
-ENV PATH="/app/.venv/bin:$PATH"
+# Copy pip-installed packages from builder
+COPY --from=pybuilder /usr/local/lib/python3.12/site-packages /usr/local/lib/python3.12/site-packages
+COPY --from=pybuilder /usr/local/bin /usr/local/bin
 
 # Copy source
 COPY src/ /app/
 
 # Ensure empty cookie file exists (volume will override if provided)
 RUN touch /app/youtube-cookies.txt
-
-# Create temp directory for downloads
-RUN mkdir -p /tmp/raayan && chmod 777 /tmp/raayan
 
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
