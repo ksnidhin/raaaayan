@@ -93,7 +93,10 @@ class YoutubeDownload(BaseDownloader):
             # Use cookies if present
             cookie_path = "/app/youtube-cookies.txt"
             if os.path.exists(cookie_path) and os.path.getsize(cookie_path) > 0:
-                ydl_opts["cookiefile"] = cookie_path
+                import shutil
+                temp_cookie_path = str(Path(self._tempdir.name) / "cookies.txt")
+                shutil.copy2(cookie_path, temp_cookie_path)
+                ydl_opts["cookiefile"] = temp_cookie_path
 
             try:
                 self._bot_msg.edit_text(f"Downloading... ⏳")
