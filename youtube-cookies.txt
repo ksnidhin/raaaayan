@@ -1,0 +1,8 @@
+# Netscape HTTP Cookie File
+# This file is intentionally empty.
+# To use YouTube cookies for age-restricted or logged-in content:
+#   1. Export cookies from your browser using a cookie exporter extension
+#   2. Save as youtube-cookies.txt in Netscape format
+#   3. This file is volume-mounted into the container at /app/youtube-cookies.txt
+#
+# WARNING: Never commit real cookies to Git. This placeholder file is safe to commit.

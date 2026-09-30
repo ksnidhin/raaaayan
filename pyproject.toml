@@ -1,0 +1,35 @@
+[project]
+name = "raayan"
+version = "1.0.0"
+description = "Raayan — claim me if u caan."
+authors = [
+    {name = "Benny", email = "benny.think@gmail.com"},
+]
+# Upstream: ytdlbot (https://github.com/tgbot-collection/ytdlbot) — Apache 2.0
+dependencies = [
+    "tgcrypto>=1.2.5",
+    "yt-dlp[curl-cffi,default]==2026.1.31",
+    "APScheduler>=3.11.2",
+    "ffmpeg-python>=0.2.0",
+    "ffpb>=0.4.2",
+    "PyMySQL>=1.1.1",
+    "filetype>=1.2.0",
+    "beautifulsoup4>=4.14.3",
+    "fakeredis>=2.33.0",
+    "redis==6.4.0",
+    "requests>=2.32.5",
+    "tqdm==4.67.2",
+    "token-bucket>=0.3.0",
+    "python-dotenv>=1.0.1",
+    "pyrogram>=2.0.106",
+    "sqlalchemy>=2.0.36",
+    "psutil>=7.2.2",
+]
+requires-python = ">=3.12"
+
+[build-system]
+requires = ["pdm-backend"]
+build-backend = "pdm.backend"
+
+[tool.pdm]
+distribution = false

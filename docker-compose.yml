@@ -1,0 +1,77 @@
+# Raayan — docker-compose.yml
+# ARM64 deployment target: linux/aarch64
+#
+# Services:
+#   redis   — redis:7-alpine (multi-arch, linux/arm64 VERIFIED via Docker Hub)
+#   mysql   — mysql:8.0 (official image, linux/arm64 VERIFIED via Docker Hub)
+#   raayan  — the bot (built from ./Dockerfile)
+#
+# NOTE: Upstream used ubuntu/mysql:8.0-22.04_beta which has limited ARM64 support.
+# CHANGE: Replaced with mysql:8.0 (official image) which VERIFIABLY supports linux/arm64.
+# REASON: ubuntu/mysql:8.0-22.04_beta ARM64 support is NOT VERIFIED; official mysql:8.0 
+#         ARM64 support is listed on Docker Hub manifest.
+#
+# Upstream: ytdlbot (https://github.com/tgbot-collection/ytdlbot) — Apache 2.0
+
+services:
+  redis:
+    image: redis:7-alpine
+    # redis:7-alpine — linux/arm64 VERIFIED via Docker Hub manifest
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    logging:
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  mysql:
+    image: mysql:8.0
+    # mysql:8.0 — linux/arm64 VERIFIED via Docker Hub manifest
+    restart: always
+    volumes:
+      - ./db_data:/var/lib/mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: "${MYSQL_ROOT_PASSWORD:-changeme_root}"
+      MYSQL_DATABASE: "${MYSQL_DATABASE:-raayan}"
+      MYSQL_USER: "${MYSQL_USER:-raayan}"
+      MYSQL_PASSWORD: "${MYSQL_PASSWORD:-changeme}"
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD:-changeme_root}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    command:
+      - --default-authentication-plugin=mysql_native_password
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --explicit_defaults_for_timestamp=1
+      - --max_allowed_packet=64M
+    logging:
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  raayan:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: raayan:latest
+    env_file:
+      - .env
+    restart: always
+    volumes:
+      - ./youtube-cookies.txt:/app/youtube-cookies.txt:ro
+    depends_on:
+      redis:
+        condition: service_healthy
+      mysql:
+        condition: service_healthy
+    logging:
+      options:
+        max-size: "10m"
+        max-file: "3"
