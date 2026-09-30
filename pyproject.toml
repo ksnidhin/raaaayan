@@ -11,7 +11,7 @@ dependencies = [
     "yt-dlp[curl-cffi,default]==2026.1.31",
     "APScheduler>=3.11.2",
     "ffmpeg-python>=0.2.0",
-    "ffpb>=0.4.2",
+    "ffpb>=0.4.0",
     "PyMySQL>=1.1.1",
     "filetype>=1.2.0",
     "beautifulsoup4>=4.14.3",
