@@ -109,8 +109,9 @@ class YoutubeDownload(BaseDownloader):
                         else:
                             # Try to find any file in tempdir
                             found = list(Path(self._tempdir.name).iterdir())
-                            if found:
-                                file_paths = [str(f) for f in found]
+                            valid_found = [str(f) for f in found if f.is_file() and f.name != "cookies.txt"]
+                            if valid_found:
+                                file_paths = valid_found
                 break  # Success on first working format
             except Exception as e:
                 logging.warning("Format %s failed: %s", fmt, e)

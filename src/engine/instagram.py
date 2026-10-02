@@ -50,12 +50,14 @@ class InstagramDownload(BaseDownloader):
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 info = ydl.extract_info(self._url, download=True)
 
-            # Collect downloaded files
+            # Collect downloaded files (excluding the cookies file we injected)
             files = sorted(Path(self._tempdir.name).iterdir())
-            if not files:
-                raise Exception("yt-dlp completed but no files were saved")
+            valid_files = [str(f) for f in files if f.is_file() and f.name != "cookies.txt"]
+            
+            if not valid_files:
+                raise Exception("yt-dlp completed but no media files were saved")
 
-            return [str(f) for f in files if f.is_file()]
+            return valid_files
 
         except Exception as e:
             logging.error("Instagram yt-dlp download failed: %s", e)
