@@ -20,4 +20,4 @@ token-bucket>=0.3.0
 python-dotenv>=1.0.1
 sqlalchemy>=2.0.36
 psutil>=7.2.2
-yt-dlp[curl-cffi,default]==2026.1.31
+yt-dlp[curl-cffi,default]>=2026.8.19

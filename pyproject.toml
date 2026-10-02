@@ -8,7 +8,7 @@ authors = [
 # Upstream: ytdlbot (https://github.com/tgbot-collection/ytdlbot) — Apache 2.0
 dependencies = [
     "tgcrypto>=1.2.5",
-    "yt-dlp[curl-cffi,default]==2026.1.31",
+    "yt-dlp[curl-cffi,default]>=2026.8.19",
     "APScheduler>=3.11.2",
     "ffmpeg-python>=0.2.0",
     "ffpb>=0.4.0",
