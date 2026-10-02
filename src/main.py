@@ -70,9 +70,11 @@ def private_use(func):
         chat_id = getattr(message.from_user, "id", None)
 
         # message type check
-        if message.chat.type != enums.ChatType.PRIVATE and not getattr(message, "text", "").lower().startswith("/ytdl"):
-            logging.debug("%s, ignored in group context", message.text)
-            return
+        if message.chat.type != enums.ChatType.PRIVATE:
+            text = getattr(message, "text", "") or ""
+            if not text.startswith("/"):
+                logging.debug("%s, ignored in group context", text)
+                return
 
         # authorized users check
         if AUTHORIZED_USER:
@@ -92,7 +94,7 @@ def private_use(func):
 @app.on_message(filters.command(["start"]))
 def start_handler(client: Client, message: types.Message):
     from_id = message.chat.id
-    init_user(from_id)
+    init_user(message.from_user.id)
     logging.info("%s welcome to Raayan!", message.from_user.id)
     client.send_chat_action(from_id, enums.ChatAction.TYPING)
     free, paid = get_free_quota(from_id), get_paid_quota(from_id)
@@ -106,7 +108,7 @@ def start_handler(client: Client, message: types.Message):
 @app.on_message(filters.command(["help"]))
 def help_handler(client: Client, message: types.Message):
     chat_id = message.chat.id
-    init_user(chat_id)
+    init_user(message.from_user.id if getattr(message, 'from_user', None) else chat_id)
     client.send_chat_action(chat_id, enums.ChatAction.TYPING)
     client.send_message(chat_id, BotText.help, disable_web_page_preview=True)
 
@@ -114,7 +116,7 @@ def help_handler(client: Client, message: types.Message):
 @app.on_message(filters.command(["about"]))
 def about_handler(client: Client, message: types.Message):
     chat_id = message.chat.id
-    init_user(chat_id)
+    init_user(message.from_user.id if getattr(message, 'from_user', None) else chat_id)
     client.send_chat_action(chat_id, enums.ChatAction.TYPING)
     client.send_message(chat_id, BotText.about)
 
@@ -122,7 +124,7 @@ def about_handler(client: Client, message: types.Message):
 @app.on_message(filters.command(["ping"]))
 def ping_handler(client: Client, message: types.Message):
     chat_id = message.chat.id
-    init_user(chat_id)
+    init_user(message.from_user.id if getattr(message, 'from_user', None) else chat_id)
     client.send_chat_action(chat_id, enums.ChatAction.TYPING)
 
     start_time = int(round(time.time() * 1000))
@@ -140,7 +142,7 @@ def ping_handler(client: Client, message: types.Message):
 @app.on_message(filters.command(["settings"]))
 def settings_handler(client: Client, message: types.Message):
     chat_id = message.chat.id
-    init_user(chat_id)
+    init_user(message.from_user.id if getattr(message, 'from_user', None) else chat_id)
     quality = get_quality_settings(chat_id)
     fmt = get_format_settings(chat_id)
     client.send_message(
@@ -154,7 +156,7 @@ def settings_handler(client: Client, message: types.Message):
 def settings_callback(client: Client, callback_query: types.CallbackQuery):
     data = callback_query.data
     chat_id = callback_query.message.chat.id
-    init_user(chat_id)
+    init_user(callback_query.from_user.id)
 
     quality_options = {"high", "medium", "low"}
     format_options = {"video", "audio", "document"}
@@ -184,7 +186,7 @@ def settings_callback(client: Client, callback_query: types.CallbackQuery):
 def spdl_handler(client: Client, message: types.Message):
     """Special download handler for Instagram, Pixeldrain, KrakenFiles."""
     chat_id = message.chat.id
-    init_user(chat_id)
+    init_user(message.from_user.id if getattr(message, 'from_user', None) else chat_id)
 
     text = message.text.split(maxsplit=1)
     if len(text) < 2:
@@ -205,7 +207,7 @@ def spdl_handler(client: Client, message: types.Message):
 def ytdl_handler(client: Client, message: types.Message):
     """Force yt-dlp download for a given URL (group-compatible via /ytdl)."""
     chat_id = message.chat.id
-    init_user(chat_id)
+    init_user(message.from_user.id if getattr(message, 'from_user', None) else chat_id)
 
     text = message.text.split(maxsplit=1)
     if len(text) < 2:
@@ -228,7 +230,7 @@ def ytdl_handler(client: Client, message: types.Message):
 def url_handler(client: Client, message: types.Message):
     """Handle plain URLs sent to the bot in private chat."""
     chat_id = message.chat.id
-    init_user(chat_id)
+    init_user(message.from_user.id if getattr(message, 'from_user', None) else chat_id)
 
     url, _ = extract_url_and_name(message.text)
 
@@ -256,7 +258,57 @@ def url_handler(client: Client, message: types.Message):
         ).start()
 
 
+
+@app.on_message(filters.command(["credit"]))
+def credit_handler(client: Client, message: types.Message):
+    user_id = message.from_user.id
+    if user_id not in OWNER:
+        message.reply_text("Owner only. ❌", quote=True)
+        return
+    
+    text = message.text.split()
+    if len(text) < 3:
+        message.reply_text("Usage: /credit <user_id> <amount>", quote=True)
+        return
+    
+    try:
+        target_id = int(text[1])
+        amount = int(text[2])
+    except ValueError:
+        message.reply_text("User ID and amount must be integers.", quote=True)
+        return
+        
+    init_user(target_id)
+    credit_account(target_id, amount)
+    free, paid = get_free_quota(target_id), get_paid_quota(target_id)
+    message.reply_text(f"Added {amount} credits to {target_id}.\nNew Balance: {free} free, {paid} paid.", quote=True)
+
+
+@app.on_message(filters.command(["check"]))
+def check_handler(client: Client, message: types.Message):
+    user_id = message.from_user.id
+    if user_id not in OWNER:
+        message.reply_text("Owner only. ❌", quote=True)
+        return
+    
+    text = message.text.split()
+    if len(text) < 2:
+        message.reply_text("Usage: /check <user_id>", quote=True)
+        return
+    
+    try:
+        target_id = int(text[1])
+    except ValueError:
+        message.reply_text("User ID must be an integer.", quote=True)
+        return
+        
+    init_user(target_id)
+    free, paid = get_free_quota(target_id), get_paid_quota(target_id)
+    message.reply_text(f"User {target_id} has {free} free and {paid} paid quota.", quote=True)
+
+
 # ---- Scheduled jobs ----
+
 
 def reset_daily_quota():
     """Reset free download quota for all users. Called by scheduler."""
