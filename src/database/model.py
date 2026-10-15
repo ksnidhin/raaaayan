@@ -19,10 +19,10 @@ from sqlalchemy import (
     Float,
     ForeignKey,
     Integer,
+    JSON,
     String,
     create_engine,
 )
-from sqlalchemy.dialects.mysql import JSON
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship, sessionmaker
 
@@ -56,8 +56,8 @@ class Setting(Base):
     __tablename__ = "settings"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    quality = Column(Enum("high", "medium", "low", "audio", "custom"), nullable=False, default="high")
-    format = Column(Enum("video", "audio", "document"), nullable=False, default="video")
+    quality = Column(Enum("high", "medium", "low", "audio", "custom", name="setting_quality"), nullable=False, default="high")
+    format = Column(Enum("video", "audio", "document", name="setting_format"), nullable=False, default="video")
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
 
     user = relationship("User", back_populates="settings")
@@ -69,7 +69,7 @@ class Payment(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     method = Column(String(50))
     amount = Column(Float)
-    status = Column(Enum("pending", "completed", "failed", "refunded"), default="pending")
+    status = Column(Enum("pending", "completed", "failed", "refunded", name="payment_status"), default="pending")
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
 
     user = relationship("User", back_populates="payments")
@@ -86,8 +86,9 @@ def _get_engine():
     if _engine is None:
         if not DB_DSN:
             raise RuntimeError("DB_DSN environment variable is not set")
-        _engine = create_engine(DB_DSN, pool_pre_ping=True)
-        Base.metadata.create_all(_engine)
+        eng = create_engine(DB_DSN, pool_pre_ping=True)
+        Base.metadata.create_all(eng)
+        _engine = eng
         logging.info("Database tables created/verified")
     return _engine
 
