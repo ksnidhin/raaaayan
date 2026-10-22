@@ -43,7 +43,8 @@ def is_youtube(url: str) -> bool:
             return False
 
         parsed = urlparse(url)
-        return parsed.netloc.lower() in {"youtube.com", "www.youtube.com", "youtu.be"}
+        netloc = parsed.netloc.lower()
+        return "youtube.com" in netloc or "youtu.be" in netloc
 
     except Exception:
         return False

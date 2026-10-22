@@ -43,6 +43,7 @@ from config import (
     TOKEN_PRICE,
     BotText,
 )
+from database.cache import Redis
 from database.model import (
     credit_account,
     get_format_settings,
@@ -54,7 +55,7 @@ from database.model import (
     set_user_settings,
 )
 from engine import direct_entrance, youtube_entrance, special_download_entrance
-from utils import extract_url_and_name, sizeof_fmt, timeof_fmt
+from utils import extract_url_and_name, is_youtube, sizeof_fmt, timeof_fmt
 
 logging.info("Authorized users are %s", AUTHORIZED_USER)
 logging.getLogger("apscheduler.executors.default").propagate = False
@@ -223,6 +224,85 @@ def spdl_handler(client: Client, message: types.Message):
     ).start()
 
 
+def prompt_youtube_quality(client: Client, bot_msg: types.Message, url: str, user_id: int):
+    """Inspect YouTube video formats and show quality selection buttons."""
+    def _extract_and_prompt():
+        cookie_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "cookies.txt"))
+        if not os.path.exists(cookie_path):
+            cookie_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "youtube-cookies.txt"))
+        if not os.path.exists(cookie_path):
+            cookie_path = "/app/youtube-cookies.txt"
+
+        ydl_opts = {
+            "quiet": True,
+            "no_warnings": True,
+            "js_runtimes": {"node": {}},
+        }
+        if os.path.exists(cookie_path) and os.path.getsize(cookie_path) > 0:
+            ydl_opts["cookiefile"] = cookie_path
+
+        try:
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                info = ydl.extract_info(url, download=False)
+        except Exception as e:
+            logging.warning("Fast YouTube info extraction failed: %s", e)
+            info = None
+
+        buttons = []
+        title = ""
+        if info:
+            title = info.get("title", "")
+            formats = info.get("formats", [])
+            heights = set()
+            for f in formats:
+                h = f.get("height")
+                if h and f.get("vcodec") != "none":
+                    heights.add(h)
+
+            sorted_heights = sorted(list(heights), reverse=True)
+            filtered = [h for h in sorted_heights if h in (2160, 1440, 1080, 720, 480, 360, 240)]
+            if not filtered and sorted_heights:
+                filtered = sorted_heights[:4]
+
+            row = []
+            for h in filtered:
+                row.append(types.InlineKeyboardButton(f"📹 {h}p", callback_data=f"yt_q|{h}"))
+                if len(row) == 2:
+                    buttons.append(row)
+                    row = []
+            if row:
+                buttons.append(row)
+
+        if not buttons:
+            buttons = [
+                [
+                    types.InlineKeyboardButton("📹 Best Video", callback_data="yt_q|best"),
+                    types.InlineKeyboardButton("📹 720p", callback_data="yt_q|720"),
+                ],
+                [
+                    types.InlineKeyboardButton("📹 480p", callback_data="yt_q|480"),
+                    types.InlineKeyboardButton("📹 360p", callback_data="yt_q|360"),
+                ]
+            ]
+
+        buttons.append([types.InlineKeyboardButton("🎵 Audio Only (M4A/MP3)", callback_data="yt_q|audio")])
+
+        try:
+            redis = Redis()
+            redis.set(f"yt_url:{bot_msg.chat.id}:{bot_msg.id}", url, ex=3600)
+        except Exception as e:
+            logging.warning("Failed to cache URL in Redis: %s", e)
+
+        header = f"🎬 **{title}**\n\n" if title else ""
+        text = f"{header}Choose download quality:"
+        try:
+            bot_msg.edit_text(text, reply_markup=types.InlineKeyboardMarkup(buttons))
+        except Exception as e:
+            logging.error("Failed to edit prompt message: %s", e)
+
+    threading.Thread(target=_extract_and_prompt, daemon=True).start()
+
+
 @app.on_message(filters.command(["ytdl"]))
 @private_use
 def ytdl_handler(client: Client, message: types.Message):
@@ -239,12 +319,16 @@ def ytdl_handler(client: Client, message: types.Message):
         message.reply_text("Usage: `/ytdl <URL>` or reply to a message containing a link.", quote=True)
         return
 
-    bot_msg = message.reply_text("Downloading... ⏳", quote=True)
-    threading.Thread(
-        target=youtube_entrance,
-        args=(client, bot_msg, url, user_id),
-        daemon=True,
-    ).start()
+    if is_youtube(url):
+        bot_msg = message.reply_text("Checking available qualities... ⏳", quote=True)
+        prompt_youtube_quality(client, bot_msg, url, user_id)
+    else:
+        bot_msg = message.reply_text("Downloading... ⏳", quote=True)
+        threading.Thread(
+            target=youtube_entrance,
+            args=(client, bot_msg, url, user_id),
+            daemon=True,
+        ).start()
 
 
 @app.on_message(filters.text & ~filters.command(
@@ -264,34 +348,65 @@ def url_handler(client: Client, message: types.Message):
     if not url or not url.startswith("http"):
         return
 
-    bot_msg = message.reply_text("Downloading... ⏳", quote=True)
-
     # Route to appropriate engine
     parsed = urlparse(url)
     host = parsed.netloc.lower()
 
-    if "instagram.com" in host or "threads.net" in host:
+    if is_youtube(url):
+        bot_msg = message.reply_text("Checking available qualities... ⏳", quote=True)
+        prompt_youtube_quality(client, bot_msg, url, user_id)
+    elif "instagram.com" in host or "threads.net" in host:
+        bot_msg = message.reply_text("Downloading... ⏳", quote=True)
         threading.Thread(
             target=special_download_entrance,
             args=(client, bot_msg, url, user_id),
             daemon=True,
         ).start()
-    elif "youtube.com" in host or "youtu.be" in host:
-        bot_msg.edit_text(
-            "Please select format:",
-            reply_markup=types.InlineKeyboardMarkup([
-                [
-                    types.InlineKeyboardButton("🎥 Video", callback_data="dl_video"),
-                    types.InlineKeyboardButton("🎵 Audio", callback_data="dl_audio"),
-                ]
-            ]),
-        )
     else:
+        bot_msg = message.reply_text("Downloading... ⏳", quote=True)
         threading.Thread(
             target=youtube_entrance,
             args=(client, bot_msg, url, user_id),
             daemon=True,
         ).start()
+
+
+@app.on_callback_query(filters.regex(r"^yt_q\|"))
+def yt_quality_callback(client: Client, callback_query: types.CallbackQuery):
+    data = callback_query.data
+    _, quality_choice = data.split("|", 1)
+    user_id = callback_query.from_user.id
+    init_user(user_id)
+
+    chat_id = callback_query.message.chat.id
+    message_id = callback_query.message.id
+
+    url = None
+    try:
+        redis = Redis()
+        url = redis.get(f"yt_url:{chat_id}:{message_id}")
+    except Exception as e:
+        logging.warning("Redis get error: %s", e)
+
+    if not url:
+        original_msg = callback_query.message.reply_to_message
+        if original_msg and original_msg.text:
+            url, _ = extract_url_and_name(original_msg.text)
+            if not url and original_msg.reply_to_message and original_msg.reply_to_message.text:
+                url, _ = extract_url_and_name(original_msg.reply_to_message.text)
+
+    if not url:
+        callback_query.answer("Video URL expired or not found. Please send the link again.", show_alert=True)
+        return
+
+    label = f"{quality_choice}p" if quality_choice.isdigit() else quality_choice.capitalize()
+    callback_query.message.edit_text(f"Downloading {label}... ⏳", reply_markup=None)
+
+    threading.Thread(
+        target=youtube_entrance,
+        args=(client, callback_query.message, url, user_id, quality_choice),
+        daemon=True,
+    ).start()
 
 
 @app.on_callback_query(filters.regex(r"^dl_"))

@@ -16,8 +16,8 @@ from engine.instagram import InstagramDownload
 from engine.krakenfiles import krakenfiles_download
 
 
-def youtube_entrance(client, bot_message, url, user_id=None):
-    youtube = YoutubeDownload(client, bot_message, url, user_id)
+def youtube_entrance(client, bot_message, url, user_id=None, resolution=None):
+    youtube = YoutubeDownload(client, bot_message, url, user_id, resolution)
     youtube.start()
 
 

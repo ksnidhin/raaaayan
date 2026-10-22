@@ -25,16 +25,34 @@ def match_filter(info_dict):
 
 
 class YoutubeDownload(BaseDownloader):
+    def __init__(self, client, bot_msg, url: str, user_id: int = None, resolution: str = None):
+        super().__init__(client, bot_msg, url, user_id)
+        self._resolution = resolution
+
     @staticmethod
     def get_format(m):
         return [
-            f"bestvideo[ext=mp4][height={m}]+bestaudio[ext=m4a]",
-            f"bestvideo[vcodec^=avc][height={m}]+bestaudio[acodec^=mp4a]/best[vcodec^=avc]/best",
+            f"bestvideo[ext=mp4][height<={m}]+bestaudio[ext=m4a]/bestvideo[height<={m}]+bestaudio/best[height<={m}]/best",
+            f"bestvideo[vcodec^=avc][height<={m}]+bestaudio[acodec^=mp4a]/best[vcodec^=avc]/best",
         ]
 
     def _setup_formats(self) -> list | None:
         if not is_youtube(self._url):
             return [None]
+
+        # Explicit resolution/format override from user selection
+        if self._resolution:
+            if self._resolution == "audio":
+                audio = AUDIO_FORMAT or "m4a"
+                return [f"bestaudio[ext={audio}]/bestaudio/best"]
+            elif self._resolution == "best":
+                return [
+                    "bestvideo[ext=mp4][vcodec!*=av01][vcodec!*=vp09]+bestaudio[ext=m4a]/bestvideo+bestaudio/best",
+                    None,
+                ]
+            elif str(self._resolution).isdigit():
+                h = int(self._resolution)
+                return self.get_format(h)
 
         quality, format_ = get_quality_settings(self._from_user), get_format_settings(self._from_user)
         # quality: high, medium, low, custom
@@ -72,6 +90,13 @@ class YoutubeDownload(BaseDownloader):
 
         format_list = formats if formats else [None]
 
+        # Use cookies if present
+        cookie_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "cookies.txt"))
+        if not os.path.exists(cookie_path):
+            cookie_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "youtube-cookies.txt"))
+        if not os.path.exists(cookie_path):
+            cookie_path = "/app/youtube-cookies.txt"
+
         for fmt in format_list:
             ydl_opts = {
                 "outtmpl": str(Path(self._tempdir.name) / "%(title)s.%(ext)s"),
@@ -80,6 +105,7 @@ class YoutubeDownload(BaseDownloader):
                 "noplaylist": True,
                 "quiet": True,
                 "no_warnings": True,
+                "js_runtimes": {"node": {}},
             }
 
             if fmt:
@@ -90,10 +116,6 @@ class YoutubeDownload(BaseDownloader):
             if ENABLE_FFMPEG:
                 ydl_opts["merge_output_format"] = "mp4"
 
-            # Use cookies if present
-            cookie_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "youtube-cookies.txt"))
-            if not os.path.exists(cookie_path):
-                cookie_path = "/app/youtube-cookies.txt"
             if os.path.exists(cookie_path) and os.path.getsize(cookie_path) > 0:
                 import shutil
                 temp_cookie_path = str(Path(self._tempdir.name) / "cookies.txt")

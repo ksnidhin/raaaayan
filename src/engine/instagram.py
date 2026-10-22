@@ -39,10 +39,13 @@ class InstagramDownload(BaseDownloader):
             "ignore_no_formats_error": True,
             "writethumbnail": True,
             "ignoreerrors": True,
+            "js_runtimes": {"node": {}},
         }
 
         # Use cookies if present (helps with private/age-restricted content)
-        cookie_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "youtube-cookies.txt"))
+        cookie_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "cookies.txt"))
+        if not os.path.exists(cookie_path):
+            cookie_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "youtube-cookies.txt"))
         if not os.path.exists(cookie_path):
             cookie_path = "/app/youtube-cookies.txt"
         if os.path.exists(cookie_path) and os.path.getsize(cookie_path) > 0:
