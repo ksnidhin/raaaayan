@@ -13,7 +13,7 @@ from urllib.parse import urlparse
 from engine.direct import DirectDownload
 
 
-def pixeldrain_download(client, bot_message, url):
+def pixeldrain_download(client, bot_message, url, user_id=None):
     FILE_URL_FORMAT = "https://pixeldrain.com/api/file/{}?download"
     USER_PAGE_PATTERN = re.compile(r"https://pixeldrain.com/u/(\w+)")
 
@@ -33,5 +33,5 @@ def pixeldrain_download(client, bot_message, url):
         return
 
     direct_url = FILE_URL_FORMAT.format(file_id)
-    dl = DirectDownload(client, bot_message, direct_url)
+    dl = DirectDownload(client, bot_message, direct_url, user_id)
     dl.start()

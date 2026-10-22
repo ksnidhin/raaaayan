@@ -36,7 +36,7 @@ class YoutubeDownload(BaseDownloader):
         if not is_youtube(self._url):
             return [None]
 
-        quality, format_ = get_quality_settings(self._chat_id), get_format_settings(self._chat_id)
+        quality, format_ = get_quality_settings(self._from_user), get_format_settings(self._from_user)
         # quality: high, medium, low, custom
         # format: audio, video, document
         formats = []
@@ -91,7 +91,9 @@ class YoutubeDownload(BaseDownloader):
                 ydl_opts["merge_output_format"] = "mp4"
 
             # Use cookies if present
-            cookie_path = "/app/youtube-cookies.txt"
+            cookie_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "youtube-cookies.txt"))
+            if not os.path.exists(cookie_path):
+                cookie_path = "/app/youtube-cookies.txt"
             if os.path.exists(cookie_path) and os.path.getsize(cookie_path) > 0:
                 import shutil
                 temp_cookie_path = str(Path(self._tempdir.name) / "cookies.txt")

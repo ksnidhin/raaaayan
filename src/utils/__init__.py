@@ -65,7 +65,12 @@ def shorten_url(url: str, limit: int = 50) -> str:
 
 def extract_url_and_name(text: str):
     """Extract URL and optional filename from a message text."""
-    parts = text.strip().split(maxsplit=1)
-    url = parts[0] if parts else ""
-    name = parts[1] if len(parts) > 1 else ""
-    return url, name
+    if not text:
+        return "", ""
+    import re
+    match = re.search(r"(https?://[^\s]+)", text)
+    if not match:
+        return "", ""
+    url = match.group(1)
+    name_part = text[match.end():].strip()
+    return url, name_part

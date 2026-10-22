@@ -55,20 +55,23 @@ def generate_input_media(file_paths: list, cap: str) -> list:
 
 
 class BaseDownloader(ABC):
-    def __init__(self, client, bot_msg, url: str):
+    def __init__(self, client, bot_msg, url: str, user_id: int = None):
         self._client = client
         self._url = url
-        # chat id is the same for private chat
-        self._chat_id = self._from_user = bot_msg.chat.id
-        if bot_msg.chat.type == enums.ChatType.GROUP or bot_msg.chat.type == enums.ChatType.SUPERGROUP:
-            # if in group, we need to find out who send the message
-            self._from_user = bot_msg.reply_to_message.from_user.id
+        # chat id is the destination chat (group or private)
+        self._chat_id = bot_msg.chat.id
+        self._is_group = bot_msg.chat.type in [enums.ChatType.GROUP, enums.ChatType.SUPERGROUP]
+        self._from_user = user_id if user_id else (
+            bot_msg.reply_to_message.from_user.id
+            if getattr(bot_msg, 'reply_to_message', None) and getattr(bot_msg.reply_to_message, 'from_user', None)
+            else bot_msg.chat.id
+        )
         self._id = bot_msg.id
         self._tempdir = tempfile.TemporaryDirectory(prefix="raayan-")
         self._bot_msg = bot_msg
         self._redis = Redis()
-        self._quality = get_quality_settings(self._chat_id)
-        self._format = get_format_settings(self._chat_id)
+        self._quality = get_quality_settings(self._from_user)
+        self._format = get_format_settings(self._from_user)
 
     def __del__(self):
         self._tempdir.cleanup()
@@ -76,7 +79,7 @@ class BaseDownloader(ABC):
     def _record_usage(self):
         free, paid = get_free_quota(self._from_user), get_paid_quota(self._from_user)
         logging.info("User %s has %s free and %s paid quota", self._from_user, free, paid)
-        if free + paid < 0:
+        if free + paid <= 0:
             raise Exception("Usage limit exceeded")
 
         use_quota(self._from_user)
@@ -193,7 +196,10 @@ class BaseDownloader(ABC):
                     reply_to_message_id=self._id,
                 )
 
-            self._bot_msg.delete()
+            try:
+                self._bot_msg.delete()
+            except Exception:
+                pass
         except Exception as e:
             logging.error("Upload failed: %s", e)
             self._bot_msg.edit_text(f"Upload failed! ❌\n\n`{e}`")

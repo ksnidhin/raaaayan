@@ -11,7 +11,7 @@ from bs4 import BeautifulSoup
 from engine.direct import DirectDownload
 
 
-def krakenfiles_download(client, bot_message, url: str):
+def krakenfiles_download(client, bot_message, url: str, user_id=None):
     session = requests.Session()
 
     def _extract_form_data(url: str) -> tuple[str, dict]:
@@ -50,7 +50,7 @@ def krakenfiles_download(client, bot_message, url: str):
         if not direct_url:
             raise ValueError("No download URL in KrakenFiles response")
 
-        dl = DirectDownload(client, bot_message, direct_url)
+        dl = DirectDownload(client, bot_message, direct_url, user_id)
         dl.start()
 
     except Exception as e:
