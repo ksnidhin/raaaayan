@@ -18,6 +18,7 @@ from pathlib import Path
 
 import yt_dlp
 
+from database.model import check_quota
 from engine.base import BaseDownloader
 
 
@@ -69,12 +70,24 @@ class InstagramDownload(BaseDownloader):
 
     def start(self):
         try:
+            if not check_quota(self._from_user):
+                self._bot_msg.edit_text(
+                    "You have exceeded your download quota. ❌\n\nPlease try again later."
+                )
+                return
+
             file_paths = self._download()
             if not file_paths:
                 return
 
+            self._record_usage()
             caption = f"📸 Instagram\n🔗 {self._url[:100]}"
             self._upload(file_paths, caption)
         except Exception as e:
             logging.error("Instagram error: %s", e)
             self._bot_msg.edit_text(f"Instagram download failed! ❌\n\n`{e}`")
+        finally:
+            try:
+                self._tempdir.cleanup()
+            except Exception as e:
+                logging.warning("Tempdir cleanup failed: %s", e)

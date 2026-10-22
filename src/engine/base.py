@@ -229,3 +229,8 @@ class BaseDownloader(ABC):
         except Exception as e:
             logging.error("Download error: %s", e)
             self._bot_msg.edit_text(f"Error: ❌\n\n`{e}`")
+        finally:
+            try:
+                self._tempdir.cleanup()
+            except Exception as e:
+                logging.warning("Tempdir cleanup failed: %s", e)
