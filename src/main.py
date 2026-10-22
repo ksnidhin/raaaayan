@@ -171,7 +171,7 @@ def settings_handler(client: Client, message: types.Message):
     )
 
 
-@app.on_callback_query(~filters.regex(r"^dl_"))
+@app.on_callback_query(filters.regex(r"^(high|medium|low|video|audio|document)$"))
 def settings_callback(client: Client, callback_query: types.CallbackQuery):
     data = callback_query.data
     user_id = callback_query.from_user.id
@@ -224,9 +224,35 @@ def spdl_handler(client: Client, message: types.Message):
     ).start()
 
 
-def prompt_youtube_quality(client: Client, bot_msg: types.Message, url: str, user_id: int):
-    """Inspect YouTube video formats and show quality selection buttons."""
-    def _extract_and_prompt():
+def get_yt_quality_keyboard():
+    return types.InlineKeyboardMarkup([
+        [
+            types.InlineKeyboardButton("📹 1080p", callback_data="yt_q|1080"),
+            types.InlineKeyboardButton("📹 720p", callback_data="yt_q|720"),
+        ],
+        [
+            types.InlineKeyboardButton("📹 480p", callback_data="yt_q|480"),
+            types.InlineKeyboardButton("📹 360p", callback_data="yt_q|360"),
+        ],
+        [
+            types.InlineKeyboardButton("🎵 Audio Only (M4A/MP3)", callback_data="yt_q|audio"),
+        ]
+    ])
+
+
+def send_youtube_quality_prompt(client: Client, message: types.Message, url: str, user_id: int):
+    """Instantly send YouTube quality selection buttons without delay."""
+    keyboard = get_yt_quality_keyboard()
+    bot_msg = message.reply_text("Choose download quality:", reply_markup=keyboard, quote=True)
+
+    try:
+        redis = Redis()
+        redis.set(f"yt_url:{bot_msg.chat.id}:{bot_msg.id}", url, ex=3600)
+    except Exception as e:
+        logging.warning("Redis set error: %s", e)
+
+    # In background, try to fetch the video title quickly to enhance the card header
+    def _fetch_title():
         cookie_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "cookies.txt"))
         if not os.path.exists(cookie_path):
             cookie_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "youtube-cookies.txt"))
@@ -237,70 +263,20 @@ def prompt_youtube_quality(client: Client, bot_msg: types.Message, url: str, use
             "quiet": True,
             "no_warnings": True,
             "js_runtimes": {"node": {}},
+            "extract_flat": True,
         }
         if os.path.exists(cookie_path) and os.path.getsize(cookie_path) > 0:
             ydl_opts["cookiefile"] = cookie_path
-
         try:
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 info = ydl.extract_info(url, download=False)
-        except Exception as e:
-            logging.warning("Fast YouTube info extraction failed: %s", e)
-            info = None
+                title = info.get("title") if info else None
+                if title:
+                    bot_msg.edit_text(f"🎬 **{title}**\n\nChoose download quality:", reply_markup=keyboard)
+        except Exception:
+            pass
 
-        buttons = []
-        title = ""
-        if info:
-            title = info.get("title", "")
-            formats = info.get("formats", [])
-            heights = set()
-            for f in formats:
-                h = f.get("height")
-                if h and f.get("vcodec") != "none":
-                    heights.add(h)
-
-            sorted_heights = sorted(list(heights), reverse=True)
-            filtered = [h for h in sorted_heights if h in (2160, 1440, 1080, 720, 480, 360, 240)]
-            if not filtered and sorted_heights:
-                filtered = sorted_heights[:4]
-
-            row = []
-            for h in filtered:
-                row.append(types.InlineKeyboardButton(f"📹 {h}p", callback_data=f"yt_q|{h}"))
-                if len(row) == 2:
-                    buttons.append(row)
-                    row = []
-            if row:
-                buttons.append(row)
-
-        if not buttons:
-            buttons = [
-                [
-                    types.InlineKeyboardButton("📹 Best Video", callback_data="yt_q|best"),
-                    types.InlineKeyboardButton("📹 720p", callback_data="yt_q|720"),
-                ],
-                [
-                    types.InlineKeyboardButton("📹 480p", callback_data="yt_q|480"),
-                    types.InlineKeyboardButton("📹 360p", callback_data="yt_q|360"),
-                ]
-            ]
-
-        buttons.append([types.InlineKeyboardButton("🎵 Audio Only (M4A/MP3)", callback_data="yt_q|audio")])
-
-        try:
-            redis = Redis()
-            redis.set(f"yt_url:{bot_msg.chat.id}:{bot_msg.id}", url, ex=3600)
-        except Exception as e:
-            logging.warning("Failed to cache URL in Redis: %s", e)
-
-        header = f"🎬 **{title}**\n\n" if title else ""
-        text = f"{header}Choose download quality:"
-        try:
-            bot_msg.edit_text(text, reply_markup=types.InlineKeyboardMarkup(buttons))
-        except Exception as e:
-            logging.error("Failed to edit prompt message: %s", e)
-
-    threading.Thread(target=_extract_and_prompt, daemon=True).start()
+    threading.Thread(target=_fetch_title, daemon=True).start()
 
 
 @app.on_message(filters.command(["ytdl"]))
@@ -320,8 +296,7 @@ def ytdl_handler(client: Client, message: types.Message):
         return
 
     if is_youtube(url):
-        bot_msg = message.reply_text("Checking available qualities... ⏳", quote=True)
-        prompt_youtube_quality(client, bot_msg, url, user_id)
+        send_youtube_quality_prompt(client, message, url, user_id)
     else:
         bot_msg = message.reply_text("Downloading... ⏳", quote=True)
         threading.Thread(
@@ -353,8 +328,7 @@ def url_handler(client: Client, message: types.Message):
     host = parsed.netloc.lower()
 
     if is_youtube(url):
-        bot_msg = message.reply_text("Checking available qualities... ⏳", quote=True)
-        prompt_youtube_quality(client, bot_msg, url, user_id)
+        send_youtube_quality_prompt(client, message, url, user_id)
     elif "instagram.com" in host or "threads.net" in host:
         bot_msg = message.reply_text("Downloading... ⏳", quote=True)
         threading.Thread(
@@ -400,7 +374,11 @@ def yt_quality_callback(client: Client, callback_query: types.CallbackQuery):
         return
 
     label = f"{quality_choice}p" if quality_choice.isdigit() else quality_choice.capitalize()
-    callback_query.message.edit_text(f"Downloading {label}... ⏳", reply_markup=None)
+    callback_query.answer(f"Selected {label}")
+    try:
+        callback_query.message.edit_text(f"Downloading {label}... ⏳", reply_markup=None)
+    except Exception as e:
+        logging.warning("Failed to edit callback message: %s", e)
 
     threading.Thread(
         target=youtube_entrance,
