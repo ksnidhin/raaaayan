@@ -15,12 +15,12 @@ CUSTOM_SEARCHING_IDS = [
 
 # Map for custom emojis provided by user
 CUSTOM_EMOJI_IDS = {
-    "error": None,                             # ❌
-    "uploading": None,                         # 📤
+    "error": 5199519380274176771,              # ❌
+    "uploading": 5258043150110301407,          # 📤
     "success": 5424998570539373838,            # ✅
     "clapper": 5318881915908928251,            # 🎬
-    "instagram": 5787632606484893320,          # 📸
-    "package": 5422536330213088080,            # 📦
+    "instagram": 5474348994605891991,          # 📸
+    "package": 5294340837851802907,            # 📦
     "settings": 5832572966721818453,           # 🎚
     "stopwatch": 5262540380301191210,          # ⏱
     "link": 5246708069991205241,               # 🔗
