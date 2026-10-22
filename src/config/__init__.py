@@ -14,7 +14,7 @@ load_dotenv()
 
 from config.config import *
 from config.constant import *
-from config.emoji import Emoji, CUSTOM_EMOJI_IDS
+from config.emoji import Emoji, CUSTOM_EMOJI_IDS, BUTTON_VIDEO_ICON, BUTTON_AUDIO_ICON
 
 logging.basicConfig(
     level=logging.INFO,

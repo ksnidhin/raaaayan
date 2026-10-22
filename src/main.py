@@ -44,6 +44,8 @@ from config import (
     TOKEN_PRICE,
     BotText,
     Emoji,
+    BUTTON_VIDEO_ICON,
+    BUTTON_AUDIO_ICON,
 )
 from database.cache import Redis
 from database.model import (
@@ -230,15 +232,15 @@ def spdl_handler(client: Client, message: types.Message):
 def get_yt_quality_keyboard():
     return types.InlineKeyboardMarkup([
         [
-            types.InlineKeyboardButton("📹 1080p", callback_data="yt_q|1080"),
-            types.InlineKeyboardButton("📹 720p", callback_data="yt_q|720"),
+            types.InlineKeyboardButton("1080p", callback_data="yt_q|1080", icon_custom_emoji_id=BUTTON_VIDEO_ICON),
+            types.InlineKeyboardButton("720p", callback_data="yt_q|720", icon_custom_emoji_id=BUTTON_VIDEO_ICON),
         ],
         [
-            types.InlineKeyboardButton("📹 480p", callback_data="yt_q|480"),
-            types.InlineKeyboardButton("📹 360p", callback_data="yt_q|360"),
+            types.InlineKeyboardButton("480p", callback_data="yt_q|480", icon_custom_emoji_id=BUTTON_VIDEO_ICON),
+            types.InlineKeyboardButton("360p", callback_data="yt_q|360", icon_custom_emoji_id=BUTTON_VIDEO_ICON),
         ],
         [
-            types.InlineKeyboardButton("🎵 Audio Only (M4A/MP3)", callback_data="yt_q|audio"),
+            types.InlineKeyboardButton("Audio Only (M4A/MP3)", callback_data="yt_q|audio", icon_custom_emoji_id=BUTTON_AUDIO_ICON),
         ]
     ])
 

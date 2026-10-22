@@ -10,7 +10,7 @@ import typing
 
 from pyrogram import Client, types
 
-from config.emoji import Emoji
+from config.emoji import Emoji, BUTTON_VIDEO_ICON, BUTTON_AUDIO_ICON
 
 
 class BotText:
@@ -57,8 +57,8 @@ Source: https://github.com/tgbot-collection/ytdlbot
             types.InlineKeyboardButton("🔽 Low", callback_data="low"),
         ],
         [
-            types.InlineKeyboardButton("🎞 Video", callback_data="video"),
-            types.InlineKeyboardButton("🎵 Audio", callback_data="audio"),
+            types.InlineKeyboardButton("Video", callback_data="video", icon_custom_emoji_id=BUTTON_VIDEO_ICON),
+            types.InlineKeyboardButton("Audio", callback_data="audio", icon_custom_emoji_id=BUTTON_AUDIO_ICON),
             types.InlineKeyboardButton("📄 Document", callback_data="document"),
         ],
     ]

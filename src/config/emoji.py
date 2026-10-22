@@ -3,6 +3,11 @@
 
 import itertools
 import threading
+from io import BytesIO
+
+from pyrogram import raw, types
+from pyrogram.raw.core import TLObject
+from pyrogram.raw.core.primitives import Bytes, Int, Long, String
 
 # Custom Emoji IDs provided by user
 CUSTOM_DOWNLOADING_ID = 6096080291347042802
@@ -12,6 +17,10 @@ CUSTOM_SEARCHING_IDS = [
     5249245270381716113,
     5269518881818437964,
 ]
+
+# Custom Emoji IDs for Inline Keyboard Buttons
+BUTTON_VIDEO_ICON = 6010245481605632839
+BUTTON_AUDIO_ICON = 5960715046869798071
 
 # Map for custom emojis provided by user
 CUSTOM_EMOJI_IDS = {
@@ -96,3 +105,64 @@ class Emoji:
     @classmethod
     def ping(cls) -> str:
         return make_emoji(CUSTOM_EMOJI_IDS.get("ping"), "🏓")
+
+
+# ---- MTProto Layer Extension for Custom Emoji Inline Buttons ----
+
+class KeyboardButtonStyle(TLObject):
+    ID = 0x4fdd3430
+    QUALNAME = "types.KeyboardButtonStyle"
+
+    def __init__(self, icon: int = None):
+        self.icon = icon
+
+    def write(self, *args) -> bytes:
+        b = BytesIO()
+        b.write(Int(self.ID, False))
+        flags = (1 << 3) if self.icon else 0
+        b.write(Int(flags))
+        if self.icon:
+            b.write(Long(self.icon))
+        return b.getvalue()
+
+
+class StyledKeyboardButtonCallback(TLObject):
+    ID = 0xe62bc960
+    QUALNAME = "types.KeyboardButtonCallback"
+
+    def __init__(self, text: str, data: bytes, icon: int = None):
+        self.text = text
+        self.data = data
+        self.icon = icon
+
+    def write(self, *args) -> bytes:
+        b = BytesIO()
+        b.write(Int(self.ID, False))
+        flags = (1 << 10) if self.icon else 0
+        b.write(Int(flags))
+        if self.icon:
+            b.write(KeyboardButtonStyle(self.icon).write())
+        b.write(String(self.text))
+        b.write(Bytes(self.data))
+        return b.getvalue()
+
+
+_orig_btn_init = types.InlineKeyboardButton.__init__
+_orig_btn_write = types.InlineKeyboardButton.write
+
+
+def _custom_btn_init(self, text: str, *args, **kwargs):
+    self.icon_custom_emoji_id = kwargs.pop("icon_custom_emoji_id", None)
+    _orig_btn_init(self, text, *args, **kwargs)
+
+
+async def _custom_btn_write(self, client):
+    icon = getattr(self, "icon_custom_emoji_id", None)
+    if self.callback_data is not None and icon:
+        data = bytes(self.callback_data, "utf-8") if isinstance(self.callback_data, str) else self.callback_data
+        return StyledKeyboardButtonCallback(text=self.text, data=data, icon=int(icon))
+    return await _orig_btn_write(self, client)
+
+
+types.InlineKeyboardButton.__init__ = _custom_btn_init
+types.InlineKeyboardButton.write = _custom_btn_write
