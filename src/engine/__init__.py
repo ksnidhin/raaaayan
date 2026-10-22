@@ -14,6 +14,7 @@ from engine.direct import DirectDownload
 from engine.pixeldrain import pixeldrain_download
 from engine.instagram import InstagramDownload
 from engine.krakenfiles import krakenfiles_download
+from engine.pinterest import PinterestDownload
 
 
 def youtube_entrance(client, bot_message, url, user_id=None, resolution=None):
@@ -32,6 +33,12 @@ def instagram_handler(client: Any, bot_message: Any, url: str, user_id: int = No
     dl.start()
 
 
+def pinterest_handler(client: Any, bot_message: Any, url: str, user_id: int = None) -> None:
+    """A wrapper to handle the PinterestDownload class."""
+    dl = PinterestDownload(client, bot_message, url, user_id)
+    dl.start()
+
+
 def special_download_entrance(client, bot_message, url: str, user_id=None):
     """Route special URLs to their dedicated engine."""
     parsed = urlparse(url)
@@ -43,5 +50,7 @@ def special_download_entrance(client, bot_message, url: str, user_id=None):
         krakenfiles_download(client, bot_message, url, user_id)
     elif "instagram.com" in host or "threads.net" in host:
         instagram_handler(client, bot_message, url, user_id)
+    elif "pinterest." in host or "pin.it" in host:
+        pinterest_handler(client, bot_message, url, user_id)
     else:
         direct_entrance(client, bot_message, url, user_id)

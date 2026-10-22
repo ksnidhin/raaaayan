@@ -335,7 +335,7 @@ def url_handler(client: Client, message: types.Message):
 
     if is_youtube(url):
         send_youtube_quality_prompt(client, message, url, user_id)
-    elif "instagram.com" in host or "threads.net" in host:
+    elif "instagram.com" in host or "threads.net" in host or "pinterest." in host or "pin.it" in host:
         bot_msg = message.reply_text(f"Searching... {Emoji.get_search_emoji()}", quote=True)
         threading.Thread(
             target=special_download_entrance,

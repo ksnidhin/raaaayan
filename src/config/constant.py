@@ -25,7 +25,7 @@ class BotText:
     help = """
 1. For YouTube and any websites supported by yt-dlp, just send the link and Raayan will download and send it to you.
 
-2. For specific links use `/spdl {URL}`. Supported: Instagram (Videos, Photos, Reels, IGTV & carousel), Pixeldrain, KrakenFiles.
+2. For specific links use <code>/spdl &lt;URL&gt;</code>. Supported: Instagram (Videos, Photos, Reels & Stories), Pinterest (Photos, Videos, GIFs), Pixeldrain, KrakenFiles.
 
 3. If the bot doesn't work, try again later.
 

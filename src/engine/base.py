@@ -165,7 +165,14 @@ class BaseDownloader(ABC):
                 mime = filetype.guess_mime(path)
                 self._bot_msg.edit_text(f"Uploading... {Emoji.uploading()}")
 
-                if mime and "video" in mime:
+                if self._format == "document":
+                    self._client.send_document(
+                        self._chat_id,
+                        path,
+                        caption=caption,
+                        reply_to_message_id=self._id,
+                    )
+                elif mime and "video" in mime:
                     self._client.send_video(
                         self._chat_id,
                         path,
@@ -175,6 +182,13 @@ class BaseDownloader(ABC):
                     )
                 elif mime and "audio" in mime:
                     self._client.send_audio(
+                        self._chat_id,
+                        path,
+                        caption=caption,
+                        reply_to_message_id=self._id,
+                    )
+                elif mime and "image" in mime:
+                    self._client.send_photo(
                         self._chat_id,
                         path,
                         caption=caption,
