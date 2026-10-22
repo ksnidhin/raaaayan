@@ -34,6 +34,7 @@ CUSTOM_EMOJI_IDS = {
     "stopwatch": 5262540380301191210,          # ⏱
     "link": 5246708069991205241,               # 🔗
     "ping": 5269563867305879894,               # 🏓
+    "pinterest": 5206525339517344010,          # 📌
 }
 
 
@@ -105,6 +106,10 @@ class Emoji:
     @classmethod
     def ping(cls) -> str:
         return make_emoji(CUSTOM_EMOJI_IDS.get("ping"), "🏓")
+
+    @classmethod
+    def pinterest(cls) -> str:
+        return make_emoji(CUSTOM_EMOJI_IDS.get("pinterest"), "📌")
 
 
 # ---- MTProto Layer Extension for Custom Emoji Inline Buttons ----

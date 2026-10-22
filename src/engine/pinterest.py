@@ -164,7 +164,7 @@ class PinterestDownload(BaseDownloader):
                 return
 
             self._record_usage()
-            caption = f"📌 Pinterest\n{Emoji.link()} {self._url[:100]}"
+            caption = f"{Emoji.pinterest()} Pinterest\n{Emoji.link()} {self._url[:100]}"
             self._upload(file_paths, caption)
         except Exception as e:
             import html as html_lib
