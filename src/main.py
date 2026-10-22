@@ -185,10 +185,10 @@ def settings_callback(client: Client, callback_query: types.CallbackQuery):
 
     if data in quality_options:
         set_user_settings(user_id, quality=data)
-        callback_query.answer(f"Quality set to {data} {Emoji.success()}")
+        callback_query.answer(f"Quality set to {data} ✅")
     elif data in format_options:
         set_user_settings(user_id, format_=data)
-        callback_query.answer(f"Format set to {data} {Emoji.success()}")
+        callback_query.answer(f"Format set to {data} ✅")
     else:
         callback_query.answer("Unknown setting")
         return

@@ -13,19 +13,18 @@ CUSTOM_SEARCHING_IDS = [
     5269518881818437964,
 ]
 
-# Map for other emojis waiting for user-provided IDs
-# As user provides IDs, update them here:
+# Map for custom emojis provided by user
 CUSTOM_EMOJI_IDS = {
-    "error": None,       # ❌
-    "uploading": None,   # 📤
-    "success": None,     # ✅
-    "clapper": None,     # 🎬
-    "instagram": None,   # 📸
-    "package": None,     # 📦
-    "settings": None,    # 🎚
-    "stopwatch": None,   # ⏱
-    "link": None,        # 🔗
-    "ping": None,        # 🏓
+    "error": None,                             # ❌
+    "uploading": None,                         # 📤
+    "success": 5424998570539373838,            # ✅
+    "clapper": 5318881915908928251,            # 🎬
+    "instagram": 5787632606484893320,          # 📸
+    "package": 5422536330213088080,            # 📦
+    "settings": 5832572966721818453,           # 🎚
+    "stopwatch": 5262540380301191210,          # ⏱
+    "link": 5246708069991205241,               # 🔗
+    "ping": 5269563867305879894,               # 🏓
 }
 
 
