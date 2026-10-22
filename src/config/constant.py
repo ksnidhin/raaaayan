@@ -10,6 +10,8 @@ import typing
 
 from pyrogram import Client, types
 
+from config.emoji import Emoji
+
 
 class BotText:
 
@@ -31,8 +33,8 @@ class BotText:
     """
 
     about = """
-**Raayan**
-_claim me if u caan._
+<b>Raayan</b>
+<i>claim me if u caan.</i>
 
 Powered by yt-dlp | Built on ytdlbot (Apache 2.0)
 Source: https://github.com/tgbot-collection/ytdlbot
@@ -42,11 +44,11 @@ Source: https://github.com/tgbot-collection/ytdlbot
 
     quota_exceeded = "You have exceeded your download quota. Please try again later."
 
-    download_failed = "Download failed! ❌ Please check the link and try again."
+    download_failed = f"Download failed! {Emoji.error()} Please check the link and try again."
 
-    downloading = "Downloading... ⏳"
+    downloading = f"Downloading... {Emoji.downloading()}"
 
-    uploading = "Uploading... 📤"
+    uploading = f"Uploading... {Emoji.uploading()}"
 
     settings_keyboard = [
         [

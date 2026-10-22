@@ -12,12 +12,14 @@
 #         posts, reels, stories, and carousels.
 # EVIDENCE: yt-dlp supported sites list includes instagram.com
 
+import html as html_lib
 import logging
 import os
 from pathlib import Path
 
 import yt_dlp
 
+from config import Emoji
 from database.model import check_quota
 from engine.base import BaseDownloader
 
@@ -55,7 +57,7 @@ class InstagramDownload(BaseDownloader):
             ydl_opts["cookiefile"] = temp_cookie_path
 
         try:
-            self._bot_msg.edit_text("Downloading from Instagram... ⏳")
+            self._bot_msg.edit_text(f"Downloading from Instagram... {Emoji.downloading()}")
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 info = ydl.extract_info(self._url, download=True)
         except Exception as e:
@@ -66,7 +68,7 @@ class InstagramDownload(BaseDownloader):
         valid_files = [str(f) for f in files if f.is_file() and f.name != "cookies.txt"]
         
         if not valid_files:
-            self._bot_msg.edit_text("Instagram download failed! ❌\nNo media found.")
+            self._bot_msg.edit_text(f"Instagram download failed! {Emoji.error()}\nNo media found.")
             return []
 
         return valid_files
@@ -75,7 +77,7 @@ class InstagramDownload(BaseDownloader):
         try:
             if not check_quota(self._from_user):
                 self._bot_msg.edit_text(
-                    "You have exceeded your download quota. ❌\n\nPlease try again later."
+                    f"You have exceeded your download quota. {Emoji.error()}\n\nPlease try again later."
                 )
                 return
 
@@ -84,11 +86,11 @@ class InstagramDownload(BaseDownloader):
                 return
 
             self._record_usage()
-            caption = f"📸 Instagram\n🔗 {self._url[:100]}"
+            caption = f"{Emoji.instagram()} Instagram\n{Emoji.link()} {self._url[:100]}"
             self._upload(file_paths, caption)
         except Exception as e:
             logging.error("Instagram error: %s", e)
-            self._bot_msg.edit_text(f"Instagram download failed! ❌\n\n`{e}`")
+            self._bot_msg.edit_text(f"Instagram download failed! {Emoji.error()}\n\n<code>{html_lib.escape(str(e))}</code>")
         finally:
             try:
                 self._tempdir.cleanup()

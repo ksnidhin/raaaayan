@@ -7,6 +7,7 @@
 # License: Apache 2.0
 
 import functools
+import html as html_lib
 import logging
 import os
 import pathlib
@@ -32,6 +33,7 @@ from config import (
     CAPTION_URL_LENGTH_LIMIT,
     ENABLE_ARIA2,
     TG_NORMAL_MAX_SIZE,
+    Emoji,
 )
 from utils import shorten_url, sizeof_fmt
 
@@ -89,7 +91,7 @@ def get_caption(url: str, video_path) -> str:
         except Exception:
             pass
         short_url = shorten_url(url, CAPTION_URL_LENGTH_LIMIT)
-        return f"`{file_name}`\n📦 {file_size}  ⏱ {duration}\n🔗 {short_url}"
+        return f"<code>{html_lib.escape(file_name)}</code>\n{Emoji.package()} {file_size}  {Emoji.stopwatch()} {duration}\n{Emoji.link()} {short_url}"
     return shorten_url(url, CAPTION_URL_LENGTH_LIMIT)
 
 

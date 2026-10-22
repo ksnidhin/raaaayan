@@ -6,8 +6,10 @@
 # Original author: SanujaNS <sanujas@sanuja.biz>
 # License: Apache 2.0
 
+import html as html_lib
 import requests
 from bs4 import BeautifulSoup
+from config import Emoji
 from engine.direct import DirectDownload
 
 
@@ -39,7 +41,7 @@ def krakenfiles_download(client, bot_message, url: str, user_id=None):
             raise ValueError(f"KrakenFiles extraction failed: {e}")
 
     try:
-        bot_message.edit_text("Extracting KrakenFiles link... ⏳")
+        bot_message.edit_text(f"Extracting KrakenFiles link... {Emoji.downloading()}")
         post_url, form_data = _extract_form_data(url)
 
         resp = session.post(post_url, data=form_data)
@@ -54,4 +56,4 @@ def krakenfiles_download(client, bot_message, url: str, user_id=None):
         dl.start()
 
     except Exception as e:
-        bot_message.edit_text(f"KrakenFiles download failed! ❌\n\n`{e}`")
+        bot_message.edit_text(f"KrakenFiles download failed! {Emoji.error()}\n\n<code>{html_lib.escape(str(e))}</code>")

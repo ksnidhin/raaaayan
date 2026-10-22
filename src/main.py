@@ -13,6 +13,7 @@ try:
 except RuntimeError:
     asyncio.set_event_loop(asyncio.new_event_loop())
 
+import html as html_lib
 import logging
 import os
 import re
@@ -42,6 +43,7 @@ from config import (
     PROVIDER_TOKEN,
     TOKEN_PRICE,
     BotText,
+    Emoji,
 )
 from database.cache import Redis
 from database.model import (
@@ -68,6 +70,7 @@ def create_app(name: str, workers: int = 64) -> Client:
         APP_HASH,
         bot_token=BOT_TOKEN,
         workers=workers,
+        parse_mode=enums.ParseMode.HTML,
     )
 
 
@@ -153,7 +156,7 @@ def ping_handler(client: Client, message: types.Message):
     client.edit_message_text(
         chat_id=reply.chat.id,
         message_id=reply.id,
-        text=f"Pong! 🏓 `{ping_time} ms`",
+        text=f"Pong! {Emoji.ping()} <code>{ping_time} ms</code>",
     )
 
 
@@ -166,7 +169,7 @@ def settings_handler(client: Client, message: types.Message):
     fmt = get_format_settings(user_id)
     client.send_message(
         chat_id,
-        f"**Current settings:**\n🎚 Quality: `{quality}`\n📦 Format: `{fmt}`\n\nChoose your preferred quality and format:",
+        f"<b>Current settings:</b>\n{Emoji.settings()} Quality: <code>{quality}</code>\n{Emoji.package()} Format: <code>{fmt}</code>\n\nChoose your preferred quality and format:",
         reply_markup=types.InlineKeyboardMarkup(BotText.settings_keyboard),
     )
 
@@ -182,10 +185,10 @@ def settings_callback(client: Client, callback_query: types.CallbackQuery):
 
     if data in quality_options:
         set_user_settings(user_id, quality=data)
-        callback_query.answer(f"Quality set to {data} ✅")
+        callback_query.answer(f"Quality set to {data} {Emoji.success()}")
     elif data in format_options:
         set_user_settings(user_id, format_=data)
-        callback_query.answer(f"Format set to {data} ✅")
+        callback_query.answer(f"Format set to {data} {Emoji.success()}")
     else:
         callback_query.answer("Unknown setting")
         return
@@ -195,7 +198,7 @@ def settings_callback(client: Client, callback_query: types.CallbackQuery):
     client.edit_message_text(
         chat_id=callback_query.message.chat.id,
         message_id=callback_query.message.id,
-        text=f"**Current settings:**\n🎚 Quality: `{quality}`\n📦 Format: `{fmt}`\n\nChoose your preferred quality and format:",
+        text=f"<b>Current settings:</b>\n{Emoji.settings()} Quality: <code>{quality}</code>\n{Emoji.package()} Format: <code>{fmt}</code>\n\nChoose your preferred quality and format:",
         reply_markup=types.InlineKeyboardMarkup(BotText.settings_keyboard),
     )
 
@@ -213,10 +216,10 @@ def spdl_handler(client: Client, message: types.Message):
         url, _ = extract_url_and_name(message.reply_to_message.text)
 
     if not url:
-        message.reply_text("Usage: `/spdl <URL>` or reply to a message containing a link.", quote=True)
+        message.reply_text("Usage: <code>/spdl &lt;URL&gt;</code> or reply to a message containing a link.", quote=True)
         return
 
-    bot_msg = message.reply_text("Processing special link... ⏳", quote=True)
+    bot_msg = message.reply_text(f"Searching... {Emoji.get_search_emoji()}", quote=True)
     threading.Thread(
         target=special_download_entrance,
         args=(client, bot_msg, url, user_id),
@@ -272,7 +275,8 @@ def send_youtube_quality_prompt(client: Client, message: types.Message, url: str
                 info = ydl.extract_info(url, download=False)
                 title = info.get("title") if info else None
                 if title:
-                    bot_msg.edit_text(f"🎬 **{title}**\n\nChoose download quality:", reply_markup=keyboard)
+                    safe_title = html_lib.escape(title)
+                    bot_msg.edit_text(f"{Emoji.clapper()} <b>{safe_title}</b>\n\nChoose download quality:", reply_markup=keyboard)
         except Exception:
             pass
 
@@ -292,13 +296,13 @@ def ytdl_handler(client: Client, message: types.Message):
         url, _ = extract_url_and_name(message.reply_to_message.text)
 
     if not url:
-        message.reply_text("Usage: `/ytdl <URL>` or reply to a message containing a link.", quote=True)
+        message.reply_text("Usage: <code>/ytdl &lt;URL&gt;</code> or reply to a message containing a link.", quote=True)
         return
 
     if is_youtube(url):
         send_youtube_quality_prompt(client, message, url, user_id)
     else:
-        bot_msg = message.reply_text("Downloading... ⏳", quote=True)
+        bot_msg = message.reply_text(f"Searching... {Emoji.get_search_emoji()}", quote=True)
         threading.Thread(
             target=youtube_entrance,
             args=(client, bot_msg, url, user_id),
@@ -330,14 +334,14 @@ def url_handler(client: Client, message: types.Message):
     if is_youtube(url):
         send_youtube_quality_prompt(client, message, url, user_id)
     elif "instagram.com" in host or "threads.net" in host:
-        bot_msg = message.reply_text("Downloading... ⏳", quote=True)
+        bot_msg = message.reply_text(f"Searching... {Emoji.get_search_emoji()}", quote=True)
         threading.Thread(
             target=special_download_entrance,
             args=(client, bot_msg, url, user_id),
             daemon=True,
         ).start()
     else:
-        bot_msg = message.reply_text("Downloading... ⏳", quote=True)
+        bot_msg = message.reply_text(f"Searching... {Emoji.get_search_emoji()}", quote=True)
         threading.Thread(
             target=youtube_entrance,
             args=(client, bot_msg, url, user_id),
@@ -376,7 +380,7 @@ def yt_quality_callback(client: Client, callback_query: types.CallbackQuery):
     label = f"{quality_choice}p" if quality_choice.isdigit() else quality_choice.capitalize()
     callback_query.answer(f"Selected {label}")
     try:
-        callback_query.message.edit_text(f"Downloading {label}... ⏳", reply_markup=None)
+        callback_query.message.edit_text(f"Downloading {label}... {Emoji.downloading()}", reply_markup=None)
     except Exception as e:
         logging.warning("Failed to edit callback message: %s", e)
 
@@ -406,7 +410,7 @@ def dl_callback(client: Client, callback_query: types.CallbackQuery):
     fmt = "video" if "video" in data else "audio"
     set_user_settings(user_id, format_=fmt)
 
-    callback_query.message.edit_text("Downloading... ⏳", reply_markup=None)
+    callback_query.message.edit_text(f"Downloading... {Emoji.downloading()}", reply_markup=None)
 
     threading.Thread(
         target=youtube_entrance,
@@ -419,7 +423,7 @@ def dl_callback(client: Client, callback_query: types.CallbackQuery):
 def credit_handler(client: Client, message: types.Message):
     user_id = message.from_user.id
     if user_id not in OWNER:
-        message.reply_text("Owner only. ❌", quote=True)
+        message.reply_text(f"Owner only. {Emoji.error()}", quote=True)
         return
 
     text = message.text.split()
@@ -444,7 +448,7 @@ def credit_handler(client: Client, message: types.Message):
 def check_handler(client: Client, message: types.Message):
     user_id = message.from_user.id
     if user_id not in OWNER:
-        message.reply_text("Owner only. ❌", quote=True)
+        message.reply_text(f"Owner only. {Emoji.error()}", quote=True)
         return
 
     text = message.text.split()

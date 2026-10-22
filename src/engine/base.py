@@ -18,12 +18,13 @@ from pathlib import Path
 from types import SimpleNamespace
 from typing import final
 
+import html as html_lib
 import ffmpeg
 import filetype
 from pyrogram import enums, types
 from tqdm import tqdm
 
-from config import TG_NORMAL_MAX_SIZE, Types
+from config import TG_NORMAL_MAX_SIZE, Types, Emoji
 from database import Redis
 from database.model import (
     check_quota,
@@ -133,7 +134,7 @@ class BaseDownloader(ABC):
             eta_str = f"{eta}s" if eta else ""
 
             text = self.__tqdm_progress(
-                "Downloading...",
+                f"Downloading... {Emoji.downloading()}",
                 total,
                 downloaded,
                 speed_str,
@@ -155,14 +156,14 @@ class BaseDownloader(ABC):
     def _upload(self, file_paths: list, caption: str):
         """Upload files to Telegram."""
         if not file_paths:
-            self._bot_msg.edit_text("No files to upload. ❌")
+            self._bot_msg.edit_text(f"No files to upload. {Emoji.error()}")
             return
 
         try:
             if len(file_paths) == 1:
                 path = file_paths[0]
                 mime = filetype.guess_mime(path)
-                self._bot_msg.edit_text("Uploading... 📤")
+                self._bot_msg.edit_text(f"Uploading... {Emoji.uploading()}")
 
                 if mime and "video" in mime:
                     self._client.send_video(
@@ -189,7 +190,7 @@ class BaseDownloader(ABC):
             else:
                 # Album upload
                 input_media = generate_input_media(file_paths, caption)
-                self._bot_msg.edit_text("Uploading album... 📤")
+                self._bot_msg.edit_text(f"Uploading album... {Emoji.uploading()}")
                 self._client.send_media_group(
                     self._chat_id,
                     input_media,
@@ -202,24 +203,24 @@ class BaseDownloader(ABC):
                 pass
         except Exception as e:
             logging.error("Upload failed: %s", e)
-            self._bot_msg.edit_text(f"Upload failed! ❌\n\n`{e}`")
+            self._bot_msg.edit_text(f"Upload failed! {Emoji.error()}\n\n<code>{html_lib.escape(str(e))}</code>")
 
     def start(self):
         """Main entry point: check quota, download, upload."""
         try:
             if not check_quota(self._from_user):
                 self._bot_msg.edit_text(
-                    "You have exceeded your download quota. ❌\n\nPlease try again later."
+                    f"You have exceeded your download quota. {Emoji.error()}\n\nPlease try again later."
                 )
                 return
 
-            self._bot_msg.edit_text("Processing... ⏳")
+            self._bot_msg.edit_text(f"Processing... {Emoji.get_search_emoji()}")
             formats = self._setup_formats()
             self._record_usage()
             file_paths = self._download(formats)
 
             if not file_paths:
-                self._bot_msg.edit_text("Download failed! ❌ No files received.")
+                self._bot_msg.edit_text(f"Download failed! {Emoji.error()} No files received.")
                 return
 
             from engine.helper import get_caption
@@ -228,7 +229,7 @@ class BaseDownloader(ABC):
 
         except Exception as e:
             logging.error("Download error: %s", e)
-            self._bot_msg.edit_text(f"Error: ❌\n\n`{e}`")
+            self._bot_msg.edit_text(f"Error: {Emoji.error()}\n\n<code>{html_lib.escape(str(e))}</code>")
         finally:
             try:
                 self._tempdir.cleanup()

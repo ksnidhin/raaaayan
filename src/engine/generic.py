@@ -12,7 +12,7 @@ from pathlib import Path
 
 import yt_dlp
 
-from config import AUDIO_FORMAT
+from config import AUDIO_FORMAT, Emoji
 from utils import is_youtube
 from database.model import get_format_settings, get_quality_settings
 from engine.base import BaseDownloader
@@ -123,7 +123,7 @@ class YoutubeDownload(BaseDownloader):
                 ydl_opts["cookiefile"] = temp_cookie_path
 
             try:
-                self._bot_msg.edit_text(f"Downloading... ⏳")
+                self._bot_msg.edit_text(f"Downloading... {Emoji.downloading()}")
                 with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                     info = ydl.extract_info(self._url, download=True)
                     if info:

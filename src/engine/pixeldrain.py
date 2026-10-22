@@ -10,6 +10,7 @@ import tempfile
 import pathlib
 import re
 from urllib.parse import urlparse
+from config import Emoji
 from engine.direct import DirectDownload
 
 
@@ -29,7 +30,7 @@ def pixeldrain_download(client, bot_message, url, user_id=None):
 
     file_id = _extract_file_id(url)
     if not file_id:
-        bot_message.edit_text("Could not extract file ID from Pixeldrain URL ❌")
+        bot_message.edit_text(f"Could not extract file ID from Pixeldrain URL {Emoji.error()}")
         return
 
     direct_url = FILE_URL_FORMAT.format(file_id)
