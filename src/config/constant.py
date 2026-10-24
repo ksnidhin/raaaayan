@@ -23,13 +23,22 @@ class BotText:
     """
 
     help = """
-1. For YouTube and any websites supported by yt-dlp, just send the link and Raayan will download and send it to you.
+Send any link from our 4 official supported platforms:
+• YouTube (youtube.com, youtu.be)
+• Instagram (instagram.com, threads.net)
+• Pinterest (pinterest.com, pin.it)
+• X / Twitter (x.com, twitter.com)
 
-2. For specific links use <code>/spdl &lt;URL&gt;</code>. Supported: Instagram (Videos, Photos, Reels & Stories), Pinterest (Photos, Videos, GIFs), Pixeldrain, KrakenFiles.
+Features:
+• YouTube: instant quality selection buttons (1080p, 720p, 480p, 360p, Audio)
+• Instagram: Reels, Videos, Photos & Carousels
+• Pinterest: Full original resolution Photos, Videos & GIFs
+• X (Twitter): Videos, GIFs & Photos
 
-3. If the bot doesn't work, try again later.
-
-4. Use /settings to change download quality and format.
+Commands:
+• /settings — Change download quality & format preferences
+• /ping — Check bot speed and response time
+• /about — About Raayan
     """
 
     about = """

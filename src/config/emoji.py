@@ -35,6 +35,7 @@ CUSTOM_EMOJI_IDS = {
     "link": 5246708069991205241,               # 🔗
     "ping": 5269563867305879894,               # 🏓
     "pinterest": 5206525339517344010,          # 📌
+    "x": None,                                 # 𝕏
 }
 
 
@@ -110,6 +111,10 @@ class Emoji:
     @classmethod
     def pinterest(cls) -> str:
         return make_emoji(CUSTOM_EMOJI_IDS.get("pinterest"), "📌")
+
+    @classmethod
+    def x(cls) -> str:
+        return make_emoji(CUSTOM_EMOJI_IDS.get("x"), "𝕏")
 
 
 # ---- MTProto Layer Extension for Custom Emoji Inline Buttons ----

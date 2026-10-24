@@ -38,16 +38,47 @@ def timeof_fmt(seconds: int | float):
 
 
 def is_youtube(url: str) -> bool:
+    return get_supported_platform(url) == "youtube"
+
+
+def get_supported_platform(url: str) -> str | None:
+    """Sub-millisecond whitelist filter for official domains only.
+    
+    Returns one of: 'youtube', 'instagram', 'pinterest', 'x', or None.
+    """
+    if not url or not isinstance(url, str):
+        return None
     try:
-        if not url or not isinstance(url, str):
-            return False
-
         parsed = urlparse(url)
-        netloc = parsed.netloc.lower()
-        return "youtube.com" in netloc or "youtu.be" in netloc
+        if not parsed.scheme or parsed.scheme not in ("http", "https"):
+            return None
 
+        host = parsed.netloc.lower()
+        if ":" in host:
+            host = host.split(":")[0]
+
+        if not host:
+            return None
+
+        # 1. Official YouTube
+        if host == "youtu.be" or host == "youtube.com" or host.endswith(".youtube.com"):
+            return "youtube"
+
+        # 2. Official Instagram & Threads
+        if host == "instagram.com" or host.endswith(".instagram.com") or host == "threads.net" or host.endswith(".threads.net"):
+            return "instagram"
+
+        # 3. Official Pinterest
+        if host == "pin.it" or host.endswith(".pin.it") or host == "pinterest.com" or host.endswith(".pinterest.com") or host.startswith("pinterest."):
+            return "pinterest"
+
+        # 4. Official X / Twitter
+        if host == "x.com" or host.endswith(".x.com") or host == "twitter.com" or host.endswith(".twitter.com") or host == "t.co" or host.endswith(".t.co"):
+            return "x"
+
+        return None
     except Exception:
-        return False
+        return None
 
 
 def adjust_formats(formats):

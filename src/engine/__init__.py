@@ -15,6 +15,8 @@ from engine.pixeldrain import pixeldrain_download
 from engine.instagram import InstagramDownload
 from engine.krakenfiles import krakenfiles_download
 from engine.pinterest import PinterestDownload
+from engine.x import XDownload
+from utils import get_supported_platform
 
 
 def youtube_entrance(client, bot_message, url, user_id=None, resolution=None):
@@ -39,18 +41,27 @@ def pinterest_handler(client: Any, bot_message: Any, url: str, user_id: int = No
     dl.start()
 
 
-def special_download_entrance(client, bot_message, url: str, user_id=None):
-    """Route special URLs to their dedicated engine."""
-    parsed = urlparse(url)
-    host = parsed.netloc.lower()
+def x_handler(client: Any, bot_message: Any, url: str, user_id: int = None) -> None:
+    """A wrapper to handle the XDownload class."""
+    dl = XDownload(client, bot_message, url, user_id)
+    dl.start()
 
-    if "pixeldrain.com" in host:
-        pixeldrain_download(client, bot_message, url, user_id)
-    elif "krakenfiles.com" in host:
-        krakenfiles_download(client, bot_message, url, user_id)
-    elif "instagram.com" in host or "threads.net" in host:
+
+def special_download_entrance(client, bot_message, url: str, user_id=None):
+    """Route supported URLs to their dedicated engine."""
+    platform = get_supported_platform(url)
+
+    if platform == "instagram":
         instagram_handler(client, bot_message, url, user_id)
-    elif "pinterest." in host or "pin.it" in host:
+    elif platform == "pinterest":
         pinterest_handler(client, bot_message, url, user_id)
+    elif platform == "x":
+        x_handler(client, bot_message, url, user_id)
+    elif platform == "youtube":
+        youtube_entrance(client, bot_message, url, user_id)
+    elif "pixeldrain.com" in url:
+        pixeldrain_download(client, bot_message, url, user_id)
+    elif "krakenfiles.com" in url:
+        krakenfiles_download(client, bot_message, url, user_id)
     else:
-        direct_entrance(client, bot_message, url, user_id)
+        bot_message.edit_text("⚠️ Unsupported link.\n\nRaayan only processes official links from:\n• YouTube\n• Instagram\n• Pinterest\n• X / Twitter")

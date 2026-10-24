@@ -59,7 +59,7 @@ from database.model import (
     set_user_settings,
 )
 from engine import direct_entrance, youtube_entrance, special_download_entrance
-from utils import extract_url_and_name, is_youtube, sizeof_fmt, timeof_fmt
+from utils import extract_url_and_name, is_youtube, sizeof_fmt, timeof_fmt, get_supported_platform
 
 logging.info("Authorized users are %s", AUTHORIZED_USER)
 logging.getLogger("apscheduler.executors.default").propagate = False
@@ -83,17 +83,17 @@ def private_use(func):
     def wrapper(client: Client, message: types.Message):
         chat_id = getattr(message.from_user, "id", None)
 
-        # In groups/supergroups: only process commands or messages containing links
+        # In groups/supergroups: only process commands or messages containing official supported links
         if message.chat.type != enums.ChatType.PRIVATE:
             text = getattr(message, "text", "") or ""
-            # Allow commands, raw http links, or replies to messages
-            has_link = "http" in text or (
-                getattr(message, "reply_to_message", None)
-                and "http" in (getattr(message.reply_to_message, "text", "") or "")
-            )
-            if not text.startswith("/") and not has_link:
-                logging.debug("Ignored non-command/non-link in group: %s", text)
-                return
+            if text.startswith("/"):
+                pass
+            else:
+                url, _ = extract_url_and_name(text)
+                if not url and message.reply_to_message and message.reply_to_message.text:
+                    url, _ = extract_url_and_name(message.reply_to_message.text)
+                if not url or not get_supported_platform(url):
+                    return
 
         # authorized users check
         if AUTHORIZED_USER:
@@ -221,6 +221,18 @@ def spdl_handler(client: Client, message: types.Message):
         message.reply_text("Usage: <code>/spdl &lt;URL&gt;</code> or reply to a message containing a link.", quote=True)
         return
 
+    platform = get_supported_platform(url)
+    if not platform:
+        message.reply_text(
+            "⚠️ Unsupported link.\n\nRaayan only processes official links from:\n"
+            "• YouTube (youtube.com, youtu.be)\n"
+            "• Instagram (instagram.com, threads.net)\n"
+            "• Pinterest (pinterest.com, pin.it)\n"
+            "• X / Twitter (x.com, twitter.com)",
+            quote=True,
+        )
+        return
+
     bot_msg = message.reply_text(f"Searching... {Emoji.get_search_emoji()}", quote=True)
     threading.Thread(
         target=special_download_entrance,
@@ -301,12 +313,24 @@ def ytdl_handler(client: Client, message: types.Message):
         message.reply_text("Usage: <code>/ytdl &lt;URL&gt;</code> or reply to a message containing a link.", quote=True)
         return
 
-    if is_youtube(url):
+    platform = get_supported_platform(url)
+    if not platform:
+        message.reply_text(
+            "⚠️ Unsupported link.\n\nRaayan only processes official links from:\n"
+            "• YouTube (youtube.com, youtu.be)\n"
+            "• Instagram (instagram.com, threads.net)\n"
+            "• Pinterest (pinterest.com, pin.it)\n"
+            "• X / Twitter (x.com, twitter.com)",
+            quote=True,
+        )
+        return
+
+    if platform == "youtube":
         send_youtube_quality_prompt(client, message, url, user_id)
     else:
         bot_msg = message.reply_text(f"Searching... {Emoji.get_search_emoji()}", quote=True)
         threading.Thread(
-            target=youtube_entrance,
+            target=special_download_entrance,
             args=(client, bot_msg, url, user_id),
             daemon=True,
         ).start()
@@ -329,23 +353,26 @@ def url_handler(client: Client, message: types.Message):
     if not url or not url.startswith("http"):
         return
 
-    # Route to appropriate engine
-    parsed = urlparse(url)
-    host = parsed.netloc.lower()
+    # Microsecond whitelist check: official YouTube, Instagram, Pinterest, X only
+    platform = get_supported_platform(url)
+    if not platform:
+        if message.chat.type == enums.ChatType.PRIVATE:
+            message.reply_text(
+                "⚠️ Unsupported link.\n\nRaayan only processes official links from:\n"
+                "• YouTube (youtube.com, youtu.be)\n"
+                "• Instagram (instagram.com, threads.net)\n"
+                "• Pinterest (pinterest.com, pin.it)\n"
+                "• X / Twitter (x.com, twitter.com)",
+                quote=True,
+            )
+        return
 
-    if is_youtube(url):
+    if platform == "youtube":
         send_youtube_quality_prompt(client, message, url, user_id)
-    elif "instagram.com" in host or "threads.net" in host or "pinterest." in host or "pin.it" in host:
-        bot_msg = message.reply_text(f"Searching... {Emoji.get_search_emoji()}", quote=True)
-        threading.Thread(
-            target=special_download_entrance,
-            args=(client, bot_msg, url, user_id),
-            daemon=True,
-        ).start()
     else:
         bot_msg = message.reply_text(f"Searching... {Emoji.get_search_emoji()}", quote=True)
         threading.Thread(
-            target=youtube_entrance,
+            target=special_download_entrance,
             args=(client, bot_msg, url, user_id),
             daemon=True,
         ).start()
